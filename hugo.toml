@@ -1,0 +1,9 @@
+# WEBSITE
+baseURL = 'https://fhavret.github.io/'
+languageCode = 'en-us'
+title = "Francois' Tech Blog"
+
+# HUGO
+publishDir = "docs"
+disableKinds = ["section", "taxonomy", "term", "RSS", "sitemap", "robotsTXT", "404"]
+

@@ -1,0 +1,62 @@
+---
+title: "Django ORM pitfall"
+date: 2023-06-25
+summary: "Django ORM is one of Django best feature. It is super convenient but it can be tempting to forget the queries that are executed behind the Python fairyland."
+tags:
+  - django
+layout: "page"
+---
+<h1>Django ORM Pitfall</h1>
+<p>Django ORM is one of Django best feature. It is super convenient but it can be tempting to forget the queries that are executed behind the Python fairyland.</p>
+<h2 class="fs-3">Invoice reconciliation</h2>
+<p>Invoice reconciliation is the process of matching bank transactions to outgoing or incoming invoices.</p>
+<p>In this article we will only focus on outgoing invoices, and more precisely on <a href="https://www.atlar.com/blog/guide-to-danish-bank-payments#:~:text=FIK%20payments,-also">FIK payments</a>.</p>
+<p>Reconciliating outgoing invoices is primordial as it allows to tell apart payers that successfully paid from those that still owe money.</p>
+<p>A simplified version of the models is the following:</p>
+<pre class="d-flex justify-content-center mermaid">
+  erDiagram
+  InvoiceAsset ||--o| Reconciliation : ""
+    BankTransaction ||--o| Reconciliation : ""
+
+    InvoiceAsset {
+      string fi_ident
+    }
+
+    BankTransaction {
+      string text
+    }
+
+    Reconciliation {
+      InvoiceAsset invoice_asset
+      BankTransaction bank_transaction
+    }
+</pre>
+<p>To put it into other words, reconciliation is going through unreconciled bank transactions to find the matching invoice.</p>
+<h2 class="fs-3">Before</h2>
+<pre><code class="language-py">unreconciled_fi_bank_transactions = BankTransaction.objects.filter(...)
+
+for bank_transaction in unreconciled_fi_bank_transactions:
+matched_invoice_asset = InvoiceAsset.objects.filter(
+  fi_ident=bank_transaction.text
+).first()
+
+if matched_invoice_asset is not None:
+  # ...</code></pre>
+<p>The issue is that in each iteration of that for loop, we are querying the database.</p>
+<p>It's better to make a single request to fetch all relevant objects from the database and then work on them with Python.</p>
+<h2 class="fs-3">After</h2>
+<pre><code class="language-py">unreconciled_fi_bank_transactions = BankTransaction.objects.filter(...)
+bank_transaction_fi_idents = [b.text for b in unreconciled_fi_bank_transactions]
+
+matched_invoice_assets = InvoiceAsset.objects.filter(
+fi_ident__in=bank_transaction_fi_idents
+)
+
+for bank_transaction in unreconciled_fi_bank_transactions:
+for invoice_asset in matched_invoice_assets:
+  if bank_transaction.text == invoice_asset.fi_ident:
+      # ...</code></pre>
+<h2>Conclusion</h2>
+<p>One shouldn't try to blindly optimize a new feature, after premature optimization is the root of all evil.</p>
+<p>Such scenarios need to be spotted by monitoring the database. In our case we observed a big spike in CPU utilization whenever this task was executed.</p>
+<p class="mb-4">Also remember that it's not about making the fewest amount of requests, think in terms of <a href="https://en.wikipedia.org/wiki/Big_O_notation">big O</a> as it's about scalability.</p>

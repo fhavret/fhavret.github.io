@@ -1,0 +1,6 @@
+{{ define "main" }}
+  {{ if .Params.date }}
+    <time class="fw-lighter">{{ .Params.date.Format "January 2, 2006" }}</time>
+  {{ end }}
+  {{ .Content }}
+{{ end }}

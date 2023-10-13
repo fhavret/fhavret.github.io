@@ -1,0 +1,20 @@
+{{ define "main" }}
+  <ul class="list-unstyled">
+    {{ range .Site.RegularPages.ByDate.Reverse }}
+      {{ if eq .Section "posts" }}
+        <li>
+          {{ range $tag := .Params.tags }}
+            <span class="badge" style="background-color: {{ index (getJSON "data/tags.json") $tag }};">
+              <span>{{ $tag | title }}</span>
+              <img src="/static/img/{{ $tag }}.svg" class="ms-1" height="18" onerror="this.remove()";/>
+            </span>
+          {{ end }}
+          <a href="{{ relURL .Permalink }}" class="text-decoration-none text-reset">
+            <h1 class="fs-2">{{ .Title }}</h1>
+            <p>{{ .Params.Summary }} </p>
+          </a>
+        </li>
+      {{ end }}
+    {{ end }}
+  </ul>
+{{ end }}
