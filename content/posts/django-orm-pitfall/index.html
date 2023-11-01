@@ -1,24 +1,31 @@
 ---
 title: "Django ORM pitfall"
 date: 2023-06-25
-summary: "Django ORM is one of Django best feature. It is super convenient but it can be tempting to forget the queries that are executed behind the Python fairyland."
+summary: "Django ORM is one of Django's best features. It is super convenient, but it can be tempting to forget the queries that are executed behind the Python fairyland."
 tags:
   - django
 layout: "page"
 ---
 <h1>Django ORM Pitfall</h1>
-<p>Django ORM is one of Django best feature. It is super convenient but it can be tempting to forget the queries that are executed behind the Python fairyland.</p>
-<h2 class="fs-3">Invoice reconciliation</h2>
-<p>Invoice reconciliation is the process of matching bank transactions to outgoing or incoming invoices.</p>
-<p>In this article we will only focus on outgoing invoices, and more precisely on <a href="https://www.atlar.com/blog/guide-to-danish-bank-payments#:~:text=FIK%20payments,-also">FIK payments</a>.</p>
-<p>Reconciliating outgoing invoices is primordial as it allows to tell apart payers that successfully paid from those that still owe money.</p>
-<p>A simplified version of the models is the following:</p>
+
+<p>Django ORM is one of Django's best features. It is super convenient, but it can be tempting to forget the queries that are executed behind the Python fairyland.</p>
+
+<h2 class="fs-3">Issue</h2>
+
+<p>We observed a spike in CPU usage on the database side whenever a task was executed.</p>
+
+<h2 class="fs-3">Context</h2>
+
+<p>This task is responsible for reconciliation, among other things.</p>
+<p>Reconciliation is the process of matching bank transactions to outgoing or incoming invoices. In this article we will only focus on outgoing invoices, and more precisely on <a href="https://www.atlar.com/blog/guide-to-danish-bank-payments#:~:text=FIK%20payments,-also">FIK payments</a>.</p>
+<p>Reconciling outgoing invoices is crucial because it allows to tell apart payers that successfully paid from those that still owe money.</p>
+<p>A simplified version of the models is as follows:</p>
 <pre class="d-flex justify-content-center mermaid">
   erDiagram
-  InvoiceAsset ||--o| Reconciliation : ""
+  Invoice ||--o| Reconciliation : ""
     BankTransaction ||--o| Reconciliation : ""
 
-    InvoiceAsset {
+    Invoice {
       string fi_ident
     }
 
@@ -27,36 +34,39 @@ layout: "page"
     }
 
     Reconciliation {
-      InvoiceAsset invoice_asset
+      Invoice invoice
       BankTransaction bank_transaction
     }
 </pre>
 <p>To put it into other words, reconciliation is going through unreconciled bank transactions to find the matching invoice.</p>
-<h2 class="fs-3">Before</h2>
+
+<h2 class="fs-3">Troubleshooting</h2>
+
+<p>Here is what the code looks like</p>
 <pre><code class="language-py">unreconciled_fi_bank_transactions = BankTransaction.objects.filter(...)
 
 for bank_transaction in unreconciled_fi_bank_transactions:
-matched_invoice_asset = InvoiceAsset.objects.filter(
-  fi_ident=bank_transaction.text
-).first()
+    matched_invoice = Invoice.objects.filter(
+        fi_ident=bank_transaction.text
+    ).first()
 
-if matched_invoice_asset is not None:
-  # ...</code></pre>
-<p>The issue is that in each iteration of that for loop, we are querying the database.</p>
+    if matched_invoice is not None:
+        # ...</code></pre>
+<p>The issue is that in each iteration of the for loop, we are querying the database.</p>
 <p>It's better to make a single request to fetch all relevant objects from the database and then work on them with Python.</p>
-<h2 class="fs-3">After</h2>
 <pre><code class="language-py">unreconciled_fi_bank_transactions = BankTransaction.objects.filter(...)
 bank_transaction_fi_idents = [b.text for b in unreconciled_fi_bank_transactions]
 
-matched_invoice_assets = InvoiceAsset.objects.filter(
-fi_ident__in=bank_transaction_fi_idents
+matched_invoices = Invoice.objects.filter(
+    fi_ident__in=bank_transaction_fi_idents
 )
 
 for bank_transaction in unreconciled_fi_bank_transactions:
-for invoice_asset in matched_invoice_assets:
-  if bank_transaction.text == invoice_asset.fi_ident:
-      # ...</code></pre>
-<h2>Conclusion</h2>
-<p>One shouldn't try to blindly optimize a new feature, after premature optimization is the root of all evil.</p>
-<p>Such scenarios need to be spotted by monitoring the database. In our case we observed a big spike in CPU utilization whenever this task was executed.</p>
-<p class="mb-4">Also remember that it's not about making the fewest amount of requests, think in terms of <a href="https://en.wikipedia.org/wiki/Big_O_notation">big O</a> as it's about scalability.</p>
+    for invoice in matched_invoices:
+        if bank_transaction.text == invoice_asset.fi_ident:
+            # ...</code></pre>
+
+<h2 class="fs-3">Conclusion</h2>
+
+<p>One shouldn't try to blindly optimize a new feature, after premature optimization is the root of all evil. Such scenarios need to be spotted by monitoring the database.</p>
+<p>Also remember that it's not about making the fewest amount of requests, think in terms of <a href="https://en.wikipedia.org/wiki/Big_O_notation">big O</a> as it's about scalability.</p>

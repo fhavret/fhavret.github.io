@@ -6,4 +6,3 @@ title = "Francois' Tech Blog"
 # HUGO
 publishDir = "docs"
 disableKinds = ["section", "taxonomy", "term", "RSS", "sitemap", "robotsTXT", "404"]
-
