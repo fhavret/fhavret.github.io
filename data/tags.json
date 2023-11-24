@@ -1,8 +1,9 @@
 {
     "_comment": "Dictionnary that maps tag elements to their background color",
-    "django": "#198753",
-    "docker": "#88C4EF",
-    "kubernetes": "#CFE1FF",
-    "postgresql": "#0C6EFD",
-    "python": ""
+    "django": "#0c4b33",
+    "docker": "#88c4Ec",
+    "kubernetes": "#cfe1ff",
+    "postgresql": "#0c6efd",
+    "python": "",
+    "spring": ""
 }
