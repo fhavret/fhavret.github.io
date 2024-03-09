@@ -1,4 +1,4 @@
-const _getTheme = () => localStorage.getItem("theme");
+const _getTheme = () => localStorage.getItem("theme") || "light";
 const _setTheme = (theme) => localStorage.setItem("theme", theme);
 const _toggleTheme = () => _getTheme() == "dark" ? _setTheme("light") : _setTheme("dark");
 const _updateUI = () => document.documentElement.setAttribute('data-bs-theme', _getTheme());
