@@ -44,7 +44,7 @@
 <h2>Database</h2>
 <p>We first thought flakiness originated from the database.</p>
 <p>After inspection (and reading the documentation 🙂), we observed that each worker has its own database.</p>
-<p><img src="/posts/parallel-tests-and-flaky-tests/img/workers-databases.png" alt="Workers database" class="img-fluid"/></p>
+<p><img src="./img/workers-databases.png" alt="Workers database" class="img-fluid"/></p>
 <p>What if flakiness was introduced by the execution order of tests ?</p>
 <p>That can&rsquo;t be, as each test is wrapped inside a transaction.</p>
 <pre><code class="language-python">@pytest.mark.django_db
