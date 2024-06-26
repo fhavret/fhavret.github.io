@@ -19,7 +19,7 @@ We first thought flakiness originated from the database.
 
 After inspection (and reading the documentation 🙂), we observed that each worker has its own database.
 
-![Workers database](/posts/parallel-tests-and-flaky-tests/img/workers-databases.png)
+![Workers database](./img/workers-databases.png)
 
 What if flakiness was introduced by the execution order of tests ? 
 

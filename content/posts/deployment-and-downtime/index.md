@@ -87,7 +87,7 @@ Can you spot the issue ?
 
 We are first applying the migration (i.e. removing the field from the database) to then do the deployment, it means that until the deployment has finished, old pods will still be using the old code that uses `is_active`.
 
-![Deployment](/posts/deployment-and-downtime/img/deployment.png)
+![Deployment](./img/deployment.png)
 
 The `web-server-old` pods have the code before the PR and if any of them get a request, it will hit the database looking for that `is_active` field, which was removed in the migration before the deployment ! It will lead in an error response, which can be OK if the migration and deployment are fast to run. 
 
@@ -168,7 +168,7 @@ containers:
 
 With that manifest, pods are taking requests when gunicorn is ready. But it doesn't mean that the pods finished booting up the Django web server and sometimes you can have a Nginx 502 response.
 
-![Nginx 502](/posts/deployment-and-downtime/img/502-bad-gateway.png)
+![Nginx 502](./img/502-bad-gateway.png)
 
 ### Solution { .fs-4 }
 

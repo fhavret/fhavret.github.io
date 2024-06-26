@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Case study: Optimizing a Django migration</title>
+    <link rel="shortcut icon" type="image/x-icon" href="/static/img/favicon.svg">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="/static/css/prism-palenight.min.css">
+    <link rel="stylesheet" href="/static/css/theme.css">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10.2.3/dist/mermaid.min.js"></script>
+    <script src="/static/js/theme.js"></script>
+  </head>
+  <body>
+    <nav class="navbar navbar-expand px-2 sticky-top">
+  <div class="container-fluid">
+    <a class="navbar-brand p-0 text-white" href="/">
+      <img src="/static/img/omega.svg" alt="Home" height="25"/>
+    </a>
+    <ul class="navbar-nav">
+      <li class="d-flex">
+        <img role="button" class="align-self-center px-2" id="themeSwitcher" src="/static/img/theme-switcher.svg" height="22">
+      </li>
+      <li class="nav-item ps-1">
+        <a class="nav-link text-white" href="/about/">About</a>
+      </li>
+    </ul>
+  </div>
+  <script>
+    const themeSwitcher = document.getElementById("themeSwitcher")
+    themeSwitcher.addEventListener("click", (event) => toggleTheme(event));
+    document.addEventListener("DOMContentLoaded", () => setInitialTheme(themeSwitcher));
+  </script>
+</nav>
+
+    <main class="mt-3 mb-4 mx-auto w-50" style="min-width: 22rem;">
+  
+    <time class="fw-lighter">April 22, 2024</time>
+  
+  <h1>The query itself</h1>
+<p>Query to update every objects we have in a table (~2 millions).</p>
+<pre><code class="language-python">for offer in Offer.objects.order_by(&#34;-created_at&#34;):
+    offer.offer_limits_meta[&#34;applied_payer_credit_limit&#34;] = Money(
+        offer.offer_limits_meta[&#34;applied_payer_credit_limit&#34;], settings.BASE_CURRENCY
+    )
+    offer.save()</code></pre><h2>OOM error</h2>
+<p>Use of servor side cursor.</p>
+<p><img src="img/transaction-pooling-mode.png" alt="Transaction pooling mode" class="img-fluid"/>
+<img src="img/session-pooling-mode.png" alt="Session pooling mode" class="img-fluid"/></p>
+<p>No need for <code>iterator()</code> as Django does it by default when iterating over a queryset — but can be used to have control over the batch size.</p>
+<h2>Query is taking too long</h2>
+<ul>
+<li>Only load relevent fields.</li>
+<li>Prefer bulk operations <code>QuerySet.bulk_create()</code> and <code>QuerySet.bulk_update()</code>.</li>
+<li>Only update if needed.</li>
+</ul>
+<pre><code class="language-python">chunk_size = 2000
+offers_chunk = []
+
+for i, offer in enumerate(
+    Offer.objects.order_by(&#34;-created_at&#34;)
+            .only(&#34;offer_limits_meta&#34;)
+            .iterator(chunk_size=chunk_size)
+):
+    dirty=False
+
+    if (
+        offer.offer_limits_meta 
+        and not isinstanceof(
+            offer.offer_limits_meta.get(&#34;applied_payer_credit_limit&#34;), 
+            Money
+        )
+    ):
+        offer.offer_limits_meta[&#34;applied_payer_credit_limit&#34;] = Money(
+            offer.offer_limits_meta[&#34;applied_payer_credit_limit&#34;], 
+            settings.BASE_CURRENCY
+        )
+        dirty = True
+
+    if dirty:
+        offers_chunk.append(offer)
+
+    if i % chunk_size == 0 and offers_chunk:
+        Offer.objects.bulk_update(
+            offers_chunk, 
+            &#34;offer_limits_meta&#34;, 
+            batch_size=1000
+        )
+        offers_chunk = []</code></pre><h2>Side notes</h2>
+<p>Make the migration idempotent and add some logging.</p>
+<h2>Other database parameters</h2>
+<p><code>CONN_MAX_AGE</code> and <code>ATOMIC_REQUEST</code>.</p>
+<p><img src="./img/kubernetes-memory-usage.png" alt="Kubernetes memory usage" class="img-fluid"/></p>
+<p>The memory performance of the kubernetes cluster after switching to server-side cursor. Can you spot when it was switched on? 😉</p>
+
+</main>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
+  </body>
+</html>

@@ -90,7 +90,7 @@ spec:
           image: # ...
           command: [&#34;python&#34;, &#34;manage.py&#34;, &#34;migrate&#34;]</code></pre><p>Can you spot the issue ?</p>
 <p>We are first applying the migration (i.e. removing the field from the database) to then do the deployment, it means that until the deployment has finished, old pods will still be using the old code that uses <code>is_active</code>.</p>
-<p><img src="/posts/deployment-and-downtime/img/deployment.png" alt="Deployment" class="img-fluid"/></p>
+<p><img src="./img/deployment.png" alt="Deployment" class="img-fluid"/></p>
 <p>The <code>web-server-old</code> pods have the code before the PR and if any of them get a request, it will hit the database looking for that <code>is_active</code> field, which was removed in the migration before the deployment ! It will lead in an error response, which can be OK if the migration and deployment are fast to run.</p>
 <p>But what if you added a custom migration on the same PR that is updating all users and it takes a long time to complete ? Then your system will be down for quite some time.</p>
 <h3 class="fs-4">Solution</h3>
@@ -143,7 +143,7 @@ containers:
 <li><code>readinessProbe</code> controls whether a pod is ready to accept request</li>
 </ul>
 <p>With that manifest, pods are taking requests when gunicorn is ready. But it doesn&rsquo;t mean that the pods finished booting up the Django web server and sometimes you can have a Nginx 502 response.</p>
-<p><img src="/posts/deployment-and-downtime/img/502-bad-gateway.png" alt="Nginx 502" class="img-fluid"/></p>
+<p><img src="./img/502-bad-gateway.png" alt="Nginx 502" class="img-fluid"/></p>
 <h3 class="fs-4">Solution</h3>
 <p>It&rsquo;s better to have a <code>readinessProbe</code> sending a request to the Django web server, that way we are sure Django finished to boot up and we can start receiving request.</p>
 <h2 class="fs-3">Conclusion</h2>
