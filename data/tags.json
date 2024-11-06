@@ -2,9 +2,9 @@
     "_comment": "Dictionnary that maps tag elements to their background color",
     "django": "#0c4b33",
     "docker": "#88c4Ec",
-    "kubernetes": "#cfe1ff",
+    "kubernetes": "#2e62db",
     "postgresql": "#0c6efd",
     "python": "",
-    "java": "",
-    "spring": ""
+    "java": "#ffcd02",
+    "spring": "#66a944"
 }
